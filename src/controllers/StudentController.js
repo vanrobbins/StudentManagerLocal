@@ -1,8 +1,9 @@
 /**
  * CONTROLLER
- * The bridge: validates input, asks the Model to store it, tells the View to redraw.
- * Also holds the view state that is not worth persisting — the search text,
- * the sort order, and which student is currently open for editing.
+ * The bridge: validates input, asks the Model to store it, tells the View to
+ * redraw. Also holds the view state that is not worth persisting — the search
+ * text, the sort order, which entry is open for amendment, and whatever the
+ * last undoable action was.
  */
 export default class StudentController {
 	/**
@@ -17,27 +18,33 @@ export default class StudentController {
 		this.sort = "added";
 		this.editingId = null;
 		this.loaded = false;
-		this.lastRemoved = null;
+
+		/** @type {{label: string, restore: () => void}|null} */
+		this.pendingUndo = null;
 
 		this.handleSave = this.handleSave.bind(this);
-		this.handleShowStudents = this.handleShowStudents.bind(this);
+		this.handleReload = this.handleReload.bind(this);
+		this.handleClearAll = this.handleClearAll.bind(this);
 		this.handleSearch = this.handleSearch.bind(this);
 		this.handleSort = this.handleSort.bind(this);
-		this.handleCardAction = this.handleCardAction.bind(this);
-		this.handleCancelEdit = this.handleCancelEdit.bind(this);
+		this.handleRowAction = this.handleRowAction.bind(this);
+		this.handleResetForm = this.handleResetForm.bind(this);
 		this.handleUndo = this.handleUndo.bind(this);
+		this.handleClassesInput = this.handleClassesInput.bind(this);
 	}
 
 	init() {
 		this.view.bindSaveStudent(this.handleSave);
-		this.view.bindShowStudents(this.handleShowStudents);
+		this.view.bindReload(this.handleReload);
+		this.view.bindClearAll(this.handleClearAll);
 		this.view.bindSearch(this.handleSearch);
 		this.view.bindSort(this.handleSort);
-		this.view.bindCardAction(this.handleCardAction);
-		this.view.bindCancelEdit(this.handleCancelEdit);
+		this.view.bindRowAction(this.handleRowAction);
+		this.view.bindResetForm(this.handleResetForm);
 		this.view.bindUndo(this.handleUndo);
+		this.view.bindClassesInput(this.handleClassesInput);
 
-		// Nothing is read from storage until "Load saved students" is used.
+		// Nothing is read from storage until the register is reloaded.
 		this.view.renderStart();
 	}
 
@@ -46,14 +53,14 @@ export default class StudentController {
 	   ----------------------------------------------------------- */
 
 	/**
-	 * Validate, save, reset the slip, redraw the roster.
+	 * Validate, save, reset the slip, redraw the register.
 	 * @param {{name: string, age: string, phone: string, email: string, classes: string[]}} formData
 	 */
 	handleSave(formData) {
-		const problem = this.validate(formData);
+		const errors = this.validate(formData);
 
-		if (problem) {
-			this.view.showError(problem.message, problem.fields);
+		if (Object.keys(errors).length > 0) {
+			this.view.showErrors(errors);
 			return;
 		}
 
@@ -62,7 +69,6 @@ export default class StudentController {
 			this.editingId = null;
 			this.view.setCreating();
 			this.refresh(student.id);
-			this.view.showToast(`Saved changes to ${student.name}.`);
 			return;
 		}
 
@@ -70,26 +76,43 @@ export default class StudentController {
 		this.view.clearForm();
 		this.view.inputs.name.focus();
 		this.refresh(student.id);
-		this.view.showToast(`Added ${student.name} to the roster.`);
 	}
 
-	/** Read the roster back out of localStorage and render it. */
-	handleShowStudents() {
+	/** Read the register back out of localStorage and render it. */
+	handleReload() {
+		this.pendingUndo = null;
 		this.refresh();
-		this.view.hideToast();
+		this.view.clearUndo();
+		this.view.markLoaded();
+	}
+
+	/** Empty the register. The undo puts the whole thing back. */
+	handleClearAll() {
+		const previous = this.model.getStudents();
+		if (previous.length === 0) return;
+
+		this.model.clearStudents();
+
+		if (this.editingId) {
+			this.handleResetForm();
+		}
+
+		this.offerUndo("Undo clear", () => this.model.saveStudents(previous));
+		this.refresh();
 	}
 
 	/**
 	 * @param {string} action "edit" or "remove"
 	 * @param {string} id
 	 */
-	handleCardAction(action, id) {
+	handleRowAction(action, id) {
 		if (action === "edit") {
 			const student = this.model.getStudent(id);
-			if (student) {
-				this.editingId = id;
-				this.view.setEditing(student);
-			}
+			if (!student) return;
+
+			this.editingId = id;
+			this.view.setEditing(student);
+			this.refresh();
 			return;
 		}
 
@@ -98,31 +121,54 @@ export default class StudentController {
 			if (!removed) return;
 
 			// Nothing is confirmed up front; the undo is the safety net.
-			this.lastRemoved = removed;
+			const { student, index } = removed;
 
 			if (this.editingId === id) {
-				this.handleCancelEdit();
+				this.handleResetForm();
 			}
 
+			this.offerUndo("Undo remove", () => this.model.insertStudent(student, index));
 			this.refresh();
-			this.view.showToast(`Removed ${removed.student.name}.`, { undo: true });
 		}
 	}
 
-	handleCancelEdit() {
+	/** Clear the slip, which also backs out of an amendment. */
+	handleResetForm() {
+		const wasEditing = this.editingId !== null;
+
 		this.editingId = null;
 		this.view.setCreating();
+
+		// The ochre marker in the register has to come off with it.
+		if (wasEditing && this.loaded) {
+			this.refresh();
+		}
+	}
+
+	/**
+	 * Arm the undo in the register's toolbar.
+	 * @param {string} label
+	 * @param {() => void} restore
+	 */
+	offerUndo(label, restore) {
+		this.pendingUndo = { label, restore };
+		this.view.offerUndo(label);
 	}
 
 	handleUndo() {
-		if (!this.lastRemoved) return;
+		if (!this.pendingUndo) return;
 
-		const { student, index } = this.lastRemoved;
-		this.lastRemoved = null;
+		const { restore } = this.pendingUndo;
+		this.pendingUndo = null;
 
-		this.model.insertStudent(student, index);
-		this.refresh(student.id);
-		this.view.showToast(`${student.name} is back on the roster.`);
+		restore();
+		this.view.clearUndo();
+		this.refresh();
+	}
+
+	/** @param {string[]} classes */
+	handleClassesInput(classes) {
+		this.view.renderClassPreview(classes);
 	}
 
 	/* -----------------------------------------------------------
@@ -142,20 +188,18 @@ export default class StudentController {
 	}
 
 	/**
-	 * Pull the roster from the Model, apply search and sort, hand it to the View.
-	 * @param {string} [highlightId] a student to stamp in, after adding or editing
+	 * Pull the register from the Model, apply search and sort, hand it to the View.
+	 * @param {string} [freshId] an entry to mark, just after it was written or amended
 	 */
-	refresh(highlightId) {
+	refresh(freshId) {
 		const students = this.model.getStudents();
 		const visible = this.sortStudents(this.filterStudents(students));
 
-		if (!this.loaded) {
-			this.loaded = true;
-			this.view.showTools();
-		}
+		this.loaded = true;
 
 		this.view.renderStudents(visible, {
-			highlightId,
+			editingId: this.editingId,
+			freshId,
 			total: students.length,
 			query: this.query,
 		});
@@ -200,40 +244,42 @@ export default class StudentController {
 	}
 
 	/* -----------------------------------------------------------
-	   Validation
+	   Validation — one message per field, the way the slip shows them
 	   ----------------------------------------------------------- */
 
 	/**
 	 * @param {Object} formData
-	 * @returns {{message: string, fields: string[]}|null} null when the entry is good
+	 * @returns {Object<string, string>} field key to message; empty when the entry is good
 	 */
 	validate({ name, age, phone, email, classes }) {
+		const errors = {};
+
 		if (!name) {
-			return { message: "Enter the student's full name.", fields: ["name"] };
+			errors.name = "A name is required.";
 		}
 
 		const ageNumber = Number(age);
-		if (!age || !Number.isFinite(ageNumber) || ageNumber < 1 || ageNumber > 120) {
-			return { message: "Enter an age between 1 and 120.", fields: ["age"] };
+		if (!age) {
+			errors.age = "Required.";
+		} else if (!Number.isFinite(ageNumber) || ageNumber < 1 || ageNumber > 120) {
+			errors.age = "Between 1 and 120.";
 		}
 
 		if (!phone) {
-			return { message: "Enter a phone number, such as 555-0199.", fields: ["phone"] };
+			errors.phone = "A contact number is required.";
 		}
 
 		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			return { message: "Enter an email address, such as jane@example.com.", fields: ["email"] };
-		}
-
-		if (this.emailTaken(email)) {
-			return { message: `${email} is already on the roster.`, fields: ["email"] };
+			errors.email = "That address does not look complete.";
+		} else if (this.emailTaken(email)) {
+			errors.email = "That address is already on the register.";
 		}
 
 		if (classes.length === 0) {
-			return { message: "List at least one class, separated by commas.", fields: ["classes"] };
+			errors.classes = "List at least one class.";
 		}
 
-		return null;
+		return errors;
 	}
 
 	/**

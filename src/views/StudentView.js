@@ -1,31 +1,35 @@
 /**
  * VIEW
- * Owns the DOM: caches elements, renders cards, reports what the user typed,
- * and hands interaction back to the Controller through bound callbacks.
+ * Owns the DOM: caches elements, renders the register, reports what the user
+ * typed, and hands interaction back to the Controller through bound callbacks.
  * Knows nothing about localStorage.
  */
 
-const TOAST_DURATION = 7000;
+const FIELDS = ["name", "age", "phone", "email", "classes"];
 
 export default class StudentView {
 	constructor() {
 		this.form = document.querySelector("#student-form");
-		this.formHeading = document.querySelector("#intake-heading");
+		this.slipTitle = document.querySelector("#slip-title");
+		this.slipFolio = document.querySelector("#slip-folio");
+		this.editingFlag = document.querySelector("#editing-flag");
 		this.saveButton = document.querySelector("#save-student");
-		this.cancelButton = document.querySelector("#cancel-edit");
-		this.error = document.querySelector("#form-error");
+		this.resetButton = document.querySelector("#reset-form");
+		this.classPreview = document.querySelector("#class-preview");
 
-		this.showButton = document.querySelector("#show-students");
-		this.tools = document.querySelector("#roster-tools");
+		this.countValue = document.querySelector("#count-value");
+		this.countUnit = document.querySelector("#count-unit");
+
 		this.search = document.querySelector("#search");
 		this.sort = document.querySelector("#sort");
+		this.reloadButton = document.querySelector("#reload");
+		this.clearButton = document.querySelector("#clear-all");
 		this.list = document.querySelector("#student-list");
-		this.count = document.querySelector("#student-count");
+		this.tally = document.querySelector("#register-tally");
+		this.stamp = document.querySelector("#register-stamp");
+		this.foot = document.querySelector("#register-foot");
 
-		this.toast = document.querySelector("#toast");
-		this.toastMessage = document.querySelector("#toast-message");
-		this.undoButton = document.querySelector("#toast-undo");
-		this.toastTimer = null;
+		this.undoButton = document.querySelector("#undo");
 
 		this.inputs = {
 			name: document.querySelector("#name"),
@@ -34,13 +38,29 @@ export default class StudentView {
 			email: document.querySelector("#email"),
 			classes: document.querySelector("#classes"),
 		};
+
+		// Each field is a cb-frame that carries the error state, with the
+		// message underneath it.
+		this.frames = {};
+		this.messages = {};
+
+		FIELDS.forEach((field) => {
+			this.frames[field] = document.querySelector(`.cb-field[data-field="${field}"] .cb-frame`);
+			this.messages[field] = document.querySelector(`#${field}-msg`);
+		});
+
+		// Age is a text box so it sits on the DS rule like the others, which
+		// means the digits-only rule is ours to keep.
+		this.inputs.age.addEventListener("input", () => {
+			this.inputs.age.value = this.inputs.age.value.replace(/[^0-9]/g, "").slice(0, 3);
+		});
 	}
 
 	/* -----------------------------------------------------------
 	   Event binding — the Controller supplies the handlers
 	   ----------------------------------------------------------- */
 
-	/** Form submit, which adds a student or saves an edit. @param {(data: Object) => void} handler */
+	/** Form submit, which writes a new entry or saves an amendment. @param {(data: Object) => void} handler */
 	bindSaveStudent(handler) {
 		this.form.addEventListener("submit", (event) => {
 			event.preventDefault();
@@ -49,8 +69,13 @@ export default class StudentView {
 	}
 
 	/** @param {() => void} handler */
-	bindShowStudents(handler) {
-		this.showButton.addEventListener("click", () => handler());
+	bindReload(handler) {
+		this.reloadButton.addEventListener("click", () => handler());
+	}
+
+	/** @param {() => void} handler */
+	bindClearAll(handler) {
+		this.clearButton.addEventListener("click", () => handler());
 	}
 
 	/** @param {(query: string) => void} handler */
@@ -63,8 +88,8 @@ export default class StudentView {
 		this.sort.addEventListener("change", () => handler(this.sort.value));
 	}
 
-	/** Edit and Remove live on the cards, so listen once on the grid. @param {(action: string, id: string) => void} handler */
-	bindCardAction(handler) {
+	/** Edit and Remove live on the rows, so listen once on the list. @param {(action: string, id: string) => void} handler */
+	bindRowAction(handler) {
 		this.list.addEventListener("click", (event) => {
 			const button = event.target.closest("[data-action]");
 			if (button) {
@@ -73,13 +98,13 @@ export default class StudentView {
 		});
 	}
 
-	/** @param {() => void} handler */
-	bindCancelEdit(handler) {
-		this.cancelButton.addEventListener("click", () => handler());
+	/** Clear form, which also backs out of an amendment. @param {() => void} handler */
+	bindResetForm(handler) {
+		this.resetButton.addEventListener("click", () => handler());
 
-		// Escape backs out of an edit the same way the button does.
+		// Escape backs out of an amendment the same way the button does.
 		document.addEventListener("keydown", (event) => {
-			if (event.key === "Escape" && !this.cancelButton.hidden) {
+			if (event.key === "Escape" && !this.editingFlag.hidden) {
 				handler();
 			}
 		});
@@ -88,6 +113,16 @@ export default class StudentView {
 	/** @param {() => void} handler */
 	bindUndo(handler) {
 		this.undoButton.addEventListener("click", () => handler());
+	}
+
+	/**
+	 * The classes box echoes its comma list back as badges while it is typed.
+	 * @param {(classes: string[]) => void} handler
+	 */
+	bindClassesInput(handler) {
+		this.inputs.classes.addEventListener("input", () => {
+			handler(this.parseClasses(this.inputs.classes.value));
+		});
 	}
 
 	/* -----------------------------------------------------------
@@ -122,10 +157,11 @@ export default class StudentView {
 	clearForm() {
 		this.form.reset();
 		this.clearErrors();
+		this.renderClassPreview([]);
 	}
 
 	/* -----------------------------------------------------------
-	   Add mode vs. edit mode — one slip does both jobs
+	   New entry vs. amendment — one slip does both jobs
 	   ----------------------------------------------------------- */
 
 	/** @param {Object} student */
@@ -136,10 +172,14 @@ export default class StudentView {
 		this.inputs.email.value = student.email ?? "";
 		this.inputs.classes.value = (student.classes ?? []).join(", ");
 
-		this.formHeading.textContent = `Edit ${student.name}`;
-		this.saveButton.textContent = "Save changes";
-		this.cancelButton.hidden = false;
+		this.slipTitle.textContent = "Amend entry";
+		this.slipFolio.textContent = "Amend";
+		this.saveButton.querySelector(".cb-btn-label").textContent = "Save changes";
+		this.resetButton.querySelector(".cb-btn-label").textContent = "Cancel";
+		this.editingFlag.hidden = false;
+
 		this.clearErrors();
+		this.renderClassPreview(student.classes ?? []);
 
 		this.form.scrollIntoView({ behavior: "smooth", block: "nearest" });
 		this.inputs.name.focus();
@@ -147,74 +187,83 @@ export default class StudentView {
 
 	setCreating() {
 		this.clearForm();
-		this.formHeading.textContent = "Add a student";
-		this.saveButton.textContent = "Add student";
-		this.cancelButton.hidden = true;
+
+		this.slipTitle.textContent = "New entry";
+		this.slipFolio.textContent = "Form 01";
+		this.saveButton.querySelector(".cb-btn-label").textContent = "Add student";
+		this.resetButton.querySelector(".cb-btn-label").textContent = "Clear form";
+		this.editingFlag.hidden = true;
 	}
 
-	showTools() {
-		this.tools.hidden = false;
+	/**
+	 * The badges under the classes box, so the comma list is legible
+	 * before it is saved.
+	 * @param {string[]} classes
+	 */
+	renderClassPreview(classes) {
+		this.classPreview.innerHTML = classes
+			.map((code) => `<span class="cb-badge cb-badge--info">${this.escape(code)}</span>`)
+			.join("");
+
+		this.classPreview.hidden = classes.length === 0;
 	}
 
 	/* -----------------------------------------------------------
-	   Validation feedback
+	   Validation feedback — one message per field, in its own frame
 	   ----------------------------------------------------------- */
 
 	/**
-	 * @param {string} message shown above the submit button
-	 * @param {string[]} [fields] field keys to mark, e.g. ["email"]
+	 * @param {Object<string, string>} errors field key to message, e.g. {email: "…"}
 	 */
-	showError(message, fields = []) {
+	showErrors(errors) {
 		this.clearErrors();
 
-		this.error.textContent = message;
-		this.error.hidden = false;
+		FIELDS.forEach((field) => {
+			const message = errors[field];
+			if (!message) return;
 
-		fields.forEach((field) => {
-			const input = this.inputs[field];
-			if (input) {
-				input.classList.add("is-invalid");
-				input.setAttribute("aria-invalid", "true");
-			}
+			this.frames[field].dataset.state = "error";
+			this.inputs[field].setAttribute("aria-invalid", "true");
+			this.messages[field].textContent = message;
+			this.messages[field].hidden = false;
 		});
 
-		if (fields.length > 0 && this.inputs[fields[0]]) {
-			this.inputs[fields[0]].focus();
+		const first = FIELDS.find((field) => errors[field]);
+		if (first) {
+			this.inputs[first].focus();
 		}
 	}
 
 	clearErrors() {
-		this.error.hidden = true;
-		this.error.textContent = "";
-
-		Object.values(this.inputs).forEach((input) => {
-			input.classList.remove("is-invalid");
-			input.removeAttribute("aria-invalid");
+		FIELDS.forEach((field) => {
+			this.frames[field].dataset.state = "open";
+			this.inputs[field].removeAttribute("aria-invalid");
+			this.messages[field].textContent = "";
+			this.messages[field].hidden = true;
 		});
 	}
 
 	/* -----------------------------------------------------------
-	   Status line
+	   The register's own status: the undo, and the loaded stamp
 	   ----------------------------------------------------------- */
 
 	/**
-	 * @param {string} message
-	 * @param {{undo?: boolean}} [options] show an Undo button alongside the message
+	 * Put the undo up in the register's toolbar. Nothing announces what
+	 * happened — the register redraws, which says it.
+	 * @param {string} label what it puts back, e.g. "Undo remove"
 	 */
-	showToast(message, { undo = false } = {}) {
-		window.clearTimeout(this.toastTimer);
-
-		this.toastMessage.textContent = message;
-		this.undoButton.hidden = !undo;
-		this.toast.hidden = false;
-
-		this.toastTimer = window.setTimeout(() => this.hideToast(), TOAST_DURATION);
+	offerUndo(label) {
+		this.undoButton.querySelector(".cb-btn-label").textContent = label;
+		this.undoButton.hidden = false;
 	}
 
-	hideToast() {
-		window.clearTimeout(this.toastTimer);
-		this.toast.hidden = true;
+	clearUndo() {
 		this.undoButton.hidden = true;
+	}
+
+	/** Stamp the register as read out of storage. */
+	markLoaded() {
+		this.stamp.hidden = false;
 	}
 
 	/* -----------------------------------------------------------
@@ -223,58 +272,72 @@ export default class StudentView {
 
 	/**
 	 * First paint, before anything has been read out of storage.
-	 * The roster appears once the user loads it or adds someone.
+	 * The register appears once it is reloaded or someone is added.
 	 */
 	renderStart() {
-		this.count.textContent = "Roster not loaded";
+		this.countValue.textContent = "——";
+		this.countUnit.textContent = "Records on file";
+		this.tally.textContent = "Not loaded";
+		this.stamp.hidden = true;
+		this.foot.hidden = true;
+
 		this.list.innerHTML = `
-			<div class="empty">
-				<p class="empty__title">Nothing on the board yet</p>
-				<p class="empty__body">Load the saved students to see who is already stored in this browser, or add someone on the slip.</p>
+			<div class="register__empty">
+				<p class="register__empty-title">The register is not open</p>
+				<p class="register__empty-body">Reload to read what is already held in this browser, or write the first entry on the slip.</p>
 			</div>`;
 	}
 
 	/**
-	 * Paint the roster grid.
+	 * Paint the register.
 	 * @param {Array<Object>} students the students to show, already filtered and sorted
-	 * @param {{highlightId?: string, total?: number, query?: string}} [options]
-	 *   total is the whole roster size, so the count can read "2 of 5 students"
+	 * @param {{editingId?: string, freshId?: string, total?: number, query?: string}} [options]
+	 *   total is the whole register, so the tally can read "2 of 5 shown"
 	 */
-	renderStudents(students, { highlightId = null, total = students.length, query = "" } = {}) {
-		this.count.textContent =
-			students.length === total
-				? this.countLabel(total)
-				: `${students.length} of ${this.countLabel(total)}`;
+	renderStudents(students, { editingId = null, freshId = null, total = students.length, query = "" } = {}) {
+		this.countValue.textContent = String(total).padStart(2, "0");
+		this.countUnit.textContent = total === 1 ? "Record on file" : "Records on file";
+
+		this.tally.textContent =
+			students.length === total ? this.tallyLabel(total) : `${students.length} of ${total} shown`;
+
+		this.foot.hidden = students.length === 0;
 
 		if (total === 0) {
 			this.list.innerHTML = `
-				<div class="empty">
-					<p class="empty__title">No students on the roster</p>
-					<p class="empty__body">Fill in the slip to add the first one.</p>
+				<div class="register__empty">
+					<p class="register__empty-title">No entries on file</p>
+					<p class="register__empty-body">Fill in the slip to write the first one.</p>
 				</div>`;
 			return;
 		}
 
 		if (students.length === 0) {
 			this.list.innerHTML = `
-				<div class="empty">
-					<p class="empty__title">Nothing matches ${this.escape(query)}</p>
-					<p class="empty__body">Try a name, an email address, or a course code such as N423.</p>
+				<div class="register__empty">
+					<p class="register__empty-title">No entries match ${this.escape(query)}</p>
+					<p class="register__empty-body">Try a name, an email address, or a course code such as N423.</p>
 				</div>`;
 			return;
 		}
 
 		this.list.innerHTML = students
-			.map((student) => this.studentCard(student, student.id === highlightId))
+			.map((student, index) =>
+				this.studentRow(student, {
+					folio: String(index + 1).padStart(2, "0"),
+					editing: student.id === editingId,
+					fresh: student.id === freshId,
+				}),
+			)
 			.join("");
 	}
 
 	/**
 	 * @param {Object} student
-	 * @param {boolean} isHighlighted
-	 * @returns {string} card markup
+	 * @param {{folio: string, editing: boolean, fresh: boolean}} options
+	 * @returns {string} row markup
 	 */
-	studentCard(student, isHighlighted) {
+	studentRow(student, { folio, editing, fresh }) {
 		const name = this.escape(student.name);
 		const email = this.escape(student.email);
 		const phone = this.escape(student.phone);
@@ -282,50 +345,46 @@ export default class StudentView {
 		const classes = Array.isArray(student.classes) ? student.classes : [];
 
 		const badges = classes
-			.map((code) => `<span class="class-badge">${this.escape(code)}</span>`)
+			.map((code) => `<span class="cb-badge cb-badge--quiet">${this.escape(code)}</span>`)
 			.join("");
+
+		// The ochre flag repeats what the slip's banner says, so a long
+		// register still shows which record is open.
+		const flag = editing ? `<span class="cb-badge cb-badge--caution">Amending</span>` : "";
 
 		return `
-			<article class="student-card${isHighlighted ? " student-card--new" : ""}">
-				<span class="student-card__monogram" aria-hidden="true">${this.escape(this.monogram(student.name))}</span>
-				<div class="student-card__actions">
-					<button class="text-button" type="button" data-action="edit" data-id="${id}" aria-label="Edit ${name}">Edit</button>
-					<button class="text-button text-button--danger" type="button" data-action="remove" data-id="${id}" aria-label="Remove ${name}">Remove</button>
+			<div class="entry" data-editing="${editing}" data-fresh="${fresh}">
+				<span class="entry__folio">${folio}</span>
+				<div class="entry__body">
+					<div class="entry__ident">
+						<span class="entry__heading"><span class="entry__name">${name}</span>${flag}</span>
+						<a class="entry__email" href="mailto:${encodeURI(student.email || "")}">${email}</a>
+					</div>
+					<div class="entry__meta">
+						<a href="tel:${encodeURI(student.phone || "")}">${phone}</a>
+						<span>Age ${this.escape(String(student.age))}</span>
+					</div>
+					<div class="entry__classes">${badges}</div>
 				</div>
-				<h3 class="student-card__name">${name}</h3>
-				<p class="student-card__age">Age ${this.escape(String(student.age))}</p>
-				<div class="student-card__contact">
-					<span><a href="mailto:${encodeURI(student.email || "")}">${email}</a></span>
-					<span><a href="tel:${encodeURI(student.phone || "")}">${phone}</a></span>
+				<div class="entry__actions">
+					<button class="cb-btn cb-btn--ghost cb-btn--sm" type="button" data-action="edit" data-id="${id}" aria-label="Amend ${name}">
+						<span class="cb-btn-label">Edit</span>
+					</button>
+					<button class="cb-btn cb-btn--ghost cb-btn--sm" type="button" data-action="remove" data-id="${id}" aria-label="Remove ${name}">
+						<span class="cb-btn-label">Remove</span>
+					</button>
 				</div>
-				<div class="student-card__classes">${badges}</div>
-			</article>`;
-	}
-
-	/**
-	 * "Jane Doe" becomes "JD".
-	 * @param {string} name
-	 * @returns {string}
-	 */
-	monogram(name) {
-		const initials = String(name)
-			.split(/\s+/)
-			.filter(Boolean)
-			.slice(0, 2)
-			.map((part) => part[0].toUpperCase())
-			.join("");
-
-		return initials || "?";
+			</div>`;
 	}
 
 	/**
 	 * @param {number} total
 	 * @returns {string}
 	 */
-	countLabel(total) {
-		if (total === 0) return "No students saved";
-		if (total === 1) return "1 student";
-		return `${total} students`;
+	tallyLabel(total) {
+		if (total === 0) return "No entries";
+		if (total === 1) return "1 entry";
+		return `${total} entries`;
 	}
 
 	/**

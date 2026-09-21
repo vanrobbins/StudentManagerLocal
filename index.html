@@ -1,113 +1,250 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-cb-theme="day">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Roster — Student Manager</title>
+		<title>Student register — Office of the registrar</title>
+		<script>
+			// Runs before first paint, so a stored dusk preference does not
+			// flash the day palette on the way in.
+			(function () {
+				try {
+					var stored = localStorage.getItem("theme");
+					var dusk = stored
+						? stored === "dusk"
+						: window.matchMedia("(prefers-color-scheme: dark)").matches;
+					document.documentElement.dataset.cbTheme = dusk ? "dusk" : "day";
+				} catch (error) {
+					// Private mode: the default in the markup stands.
+				}
+			})();
+		</script>
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
-			href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
+			href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=EB+Garamond:wght@400..800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,200..800&display=swap"
 			rel="stylesheet"
 		/>
 	</head>
-	<body>
-		<div class="shell">
-			<header class="masthead">
-				<h1 class="masthead__title">Roster</h1>
-				<p class="masthead__sub">Students saved in this browser</p>
-			</header>
+	<body class="cb-theme">
+		<div class="page">
+			<div class="page__inner">
+				<!-- Masthead: the letterhead, and the running tally -->
+				<header class="masthead">
+					<div class="masthead__eyebrow">
+						<span>Office of the registrar</span>
 
-			<div class="layout">
-				<!-- Intake slip: adds a student, and doubles as the edit form -->
-				<section class="intake" aria-labelledby="intake-heading">
-					<h2 class="intake__heading" id="intake-heading">Add a student</h2>
-
-					<form class="form" id="student-form" novalidate>
-						<div class="field">
-							<label class="field__label" for="name">Full name</label>
-							<input class="field__input" type="text" id="name" name="name" placeholder="Jane Doe" autocomplete="name" />
+						<div class="masthead__eyebrow-end">
+							<label class="cb-toggle masthead__theme" for="theme" data-checked="false">
+								<input class="cb-toggle-input" type="checkbox" role="switch" id="theme" aria-label="Dusk theme" />
+								<span class="cb-toggle-mark" id="theme-label">Day</span>
+							</label>
+							<span>Form SR&#8209;1</span>
 						</div>
-
-						<div class="field">
-							<label class="field__label" for="age">Age</label>
-							<input
-								class="field__input"
-								type="number"
-								id="age"
-								name="age"
-								placeholder="21"
-								min="1"
-								max="120"
-								inputmode="numeric"
-							/>
-						</div>
-
-						<div class="field">
-							<label class="field__label" for="phone">Phone</label>
-							<input
-								class="field__input"
-								type="tel"
-								id="phone"
-								name="phone"
-								placeholder="555-0199"
-								autocomplete="tel"
-								inputmode="tel"
-							/>
-						</div>
-
-						<div class="field">
-							<label class="field__label" for="email">Email</label>
-							<input class="field__input" type="email" id="email" name="email" placeholder="jane@example.com" autocomplete="email" />
-						</div>
-
-						<div class="field">
-							<label class="field__label" for="classes">Classes</label>
-							<input class="field__input" type="text" id="classes" name="classes" placeholder="N215, N220, N423" />
-							<p class="field__hint">Separate each course code with a comma.</p>
-						</div>
-
-						<p class="form__error" id="form-error" role="alert" hidden></p>
-
-						<div class="form__actions">
-							<button class="button button--stamp" type="submit" id="save-student">Add student</button>
-							<button class="text-button" type="button" id="cancel-edit" hidden>Cancel editing</button>
-						</div>
-					</form>
-				</section>
-
-				<!-- Roster -->
-				<section class="roster" aria-labelledby="roster-heading">
-					<div class="roster__bar">
-						<h2 class="roster__heading" id="roster-heading">
-							<span id="student-count">Roster not loaded</span>
-						</h2>
-
-						<div class="roster__tools" id="roster-tools" hidden>
-							<label class="visually-hidden" for="search">Search the roster</label>
-							<input class="tool-input" type="search" id="search" placeholder="Search name, email, or class" />
-
-							<label class="visually-hidden" for="sort">Sort by</label>
-							<select class="tool-select" id="sort">
-								<option value="added">Order added</option>
-								<option value="name">Name A–Z</option>
-								<option value="age">Age, youngest first</option>
-								<option value="classes">Most classes</option>
-							</select>
-						</div>
-
-						<button class="button button--quiet" type="button" id="show-students">Load saved students</button>
 					</div>
 
-					<div class="roster__grid" id="student-list" aria-live="polite"></div>
-				</section>
-			</div>
-		</div>
+					<div class="masthead__main">
+						<div class="masthead__titles">
+							<h1 class="masthead__title">Student register</h1>
+							<p class="masthead__sub">
+								Enrolment records held in this browser under the key <span class="mono">students</span>.
+							</p>
+						</div>
 
-		<!-- Status line: confirms what just happened, and offers the undo -->
-		<div class="toast" id="toast" role="status" hidden>
-			<span id="toast-message"></span>
-			<button class="text-button" type="button" id="toast-undo" hidden>Undo</button>
+						<div class="masthead__tally">
+							<div class="masthead__count" id="count-value">&mdash;&mdash;</div>
+							<div class="masthead__unit" id="count-unit">Records on file</div>
+						</div>
+					</div>
+				</header>
+
+				<div class="columns">
+					<!-- Intake slip: adds a student, and doubles as the amendment form -->
+					<div class="columns__slip">
+						<section class="slip" aria-labelledby="slip-title">
+							<div class="slip__plate">
+								<h2 class="slip__title" id="slip-title">New entry</h2>
+								<span class="slip__folio" id="slip-folio">Form 01</span>
+							</div>
+
+							<p class="slip__flag" id="editing-flag" hidden>Amending an existing record</p>
+
+							<form class="slip__form" id="student-form" novalidate>
+								<section class="slip__section" aria-labelledby="section-particulars">
+									<h3 class="slip__legend" id="section-particulars">I. Particulars</h3>
+
+									<div class="slip__pair">
+										<div class="cb-field" data-field="name">
+											<div class="cb-frame" data-state="open">
+												<div class="cb-frame-cap">
+													<label class="cb-label" for="name">Name</label>
+													<span class="cb-frame-idx" aria-hidden="true">01</span>
+												</div>
+												<input
+													class="cb-input"
+													type="text"
+													id="name"
+													name="name"
+													placeholder="Jane Doe"
+													autocomplete="off"
+													aria-describedby="name-msg"
+												/>
+											</div>
+											<span class="cb-error" id="name-msg" role="alert" hidden></span>
+										</div>
+
+										<div class="cb-field" data-field="age">
+											<div class="cb-frame" data-state="open">
+												<div class="cb-frame-cap">
+													<label class="cb-label" for="age">Age</label>
+													<span class="cb-frame-idx" aria-hidden="true">02</span>
+												</div>
+												<input
+													class="cb-input"
+													type="text"
+													id="age"
+													name="age"
+													placeholder="21"
+													maxlength="3"
+													inputmode="numeric"
+													aria-describedby="age-msg"
+												/>
+											</div>
+											<span class="cb-error" id="age-msg" role="alert" hidden></span>
+										</div>
+									</div>
+								</section>
+
+								<section class="slip__section" aria-labelledby="section-contact">
+									<h3 class="slip__legend" id="section-contact">II. Contact</h3>
+
+									<div class="cb-field" data-field="phone">
+										<div class="cb-frame" data-state="open">
+											<div class="cb-frame-cap">
+												<label class="cb-label" for="phone">Telephone</label>
+												<span class="cb-frame-idx" aria-hidden="true">03</span>
+											</div>
+											<input
+												class="cb-input"
+												type="tel"
+												id="phone"
+												name="phone"
+												placeholder="555-0199"
+												autocomplete="tel"
+												aria-describedby="phone-msg"
+											/>
+										</div>
+										<span class="cb-error" id="phone-msg" role="alert" hidden></span>
+									</div>
+
+									<div class="cb-field" data-field="email">
+										<div class="cb-frame" data-state="open">
+											<div class="cb-frame-cap">
+												<label class="cb-label" for="email">Email</label>
+												<span class="cb-frame-idx" aria-hidden="true">04</span>
+											</div>
+											<input
+												class="cb-input"
+												type="email"
+												id="email"
+												name="email"
+												placeholder="jane@example.com"
+												autocomplete="off"
+												aria-describedby="email-msg"
+											/>
+										</div>
+										<span class="cb-error" id="email-msg" role="alert" hidden></span>
+									</div>
+								</section>
+
+								<section class="slip__section" aria-labelledby="section-enrolment">
+									<h3 class="slip__legend" id="section-enrolment">III. Enrolment</h3>
+
+									<div class="cb-field" data-field="classes">
+										<div class="cb-frame" data-state="open">
+											<div class="cb-frame-cap">
+												<label class="cb-label" for="classes">Classes</label>
+												<span class="cb-frame-idx" aria-hidden="true">05</span>
+											</div>
+											<input
+												class="cb-input"
+												type="text"
+												id="classes"
+												name="classes"
+												placeholder="N215, N220"
+												autocomplete="off"
+												aria-describedby="classes-hint classes-msg"
+											/>
+										</div>
+										<span class="cb-hint" id="classes-hint">Comma separated, as N215, N220.</span>
+										<span class="cb-error" id="classes-msg" role="alert" hidden></span>
+									</div>
+
+									<!-- Echoes back what the comma list will become once saved -->
+									<div class="slip__preview" id="class-preview" hidden></div>
+								</section>
+							</form>
+
+							<div class="slip__actions">
+								<button class="cb-btn cb-btn--ghost" type="button" id="reset-form">
+									<span class="cb-btn-label">Clear form</span>
+								</button>
+								<button class="cb-btn cb-btn--primary" type="submit" form="student-form" id="save-student">
+									<span class="cb-btn-label">Add student</span>
+								</button>
+							</div>
+						</section>
+					</div>
+
+					<!-- The register itself -->
+					<div class="columns__register">
+						<section class="register" aria-labelledby="register-title">
+							<div class="register__head">
+								<div class="register__ident">
+									<h2 class="register__title" id="register-title">Enrolled students</h2>
+									<span class="register__tally" id="register-tally">Not loaded</span>
+									<span class="register__stamp" id="register-stamp" hidden>Loaded</span>
+								</div>
+
+								<div class="register__tools">
+									<div class="register__search">
+										<label class="visually-hidden" for="search">Search the register</label>
+										<input class="cb-input" type="search" id="search" placeholder="Search name, email, class" />
+									</div>
+
+									<span class="cb-select register__sort">
+										<label class="visually-hidden" for="sort">Sort by</label>
+										<select class="cb-select-control" id="sort">
+											<option value="added">Order entered</option>
+											<option value="name">Name A&ndash;Z</option>
+											<option value="age">Age, youngest first</option>
+											<option value="classes">Most classes</option>
+										</select>
+									</span>
+
+									<!-- Only here once there is something to put back -->
+									<button class="cb-btn cb-btn--secondary cb-btn--sm" type="button" id="undo" hidden>
+										<span class="cb-btn-label">Undo</span>
+									</button>
+
+									<button class="cb-btn cb-btn--secondary cb-btn--sm" type="button" id="reload">
+										<span class="cb-btn-label">Reload</span>
+									</button>
+								</div>
+							</div>
+
+							<div class="register__rows" id="student-list" aria-live="polite"></div>
+
+							<div class="register__foot" id="register-foot" hidden>
+								<span>End of register</span>
+								<button class="cb-btn cb-btn--danger cb-btn--sm" type="button" id="clear-all">
+									<span class="cb-btn-label">Clear the register</span>
+								</button>
+							</div>
+						</section>
+					</div>
+				</div>
+			</div>
 		</div>
 
 		<script type="module" src="/src/main.js"></script>

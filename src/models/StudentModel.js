@@ -106,6 +106,17 @@ export default class StudentModel {
 	}
 
 	/**
+	 * Empty the roster, reporting what was there so it can be put back.
+	 * @returns {Array<Object>} the students that were removed
+	 */
+	clearStudents() {
+		const students = this.getStudents();
+		this.saveStudents([]);
+
+		return students;
+	}
+
+	/**
 	 * Write the whole roster to localStorage.
 	 * @param {Array<Object>} students
 	 */
