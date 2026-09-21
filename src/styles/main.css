@@ -1,0 +1,419 @@
+/* ---------------------------------------------------------------
+   Roster — design tokens
+   Palette borrowed from library buckram binding: sage paper stock,
+   pine ink, a green cloth spine, and an oxblood stamp for actions.
+   --------------------------------------------------------------- */
+:root {
+	--paper: #e6e8de;
+	--paper-edge: #dcdfd2;
+	--card: #fcfcf8;
+	--ink: #1b2a24;
+	--ink-70: rgba(27, 42, 36, 0.7);
+	--ink-55: rgba(27, 42, 36, 0.55);
+	--ink-45: rgba(27, 42, 36, 0.45);
+	--rule: #c3c8b8;
+	--green: #2f5d50;
+	--green-wash: #e2eae4;
+	--stamp: #8a1e3c;
+	--stamp-wash: #f0dfe3;
+
+	--serif: "Newsreader", Georgia, "Times New Roman", serif;
+	--sans: "Archivo", "Helvetica Neue", Arial, sans-serif;
+
+	--step-0: 0.9375rem; /* 15px */
+	--step--1: 0.8125rem; /* 13px */
+	--step--2: 0.75rem; /* 12px */
+	--step-1: 1.25rem; /* 20px */
+	--step-2: 1.5625rem; /* 25px */
+	--step-3: 2.5rem; /* 40px */
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	margin: 0;
+	background-color: var(--paper);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: var(--step-0);
+	line-height: 1.5;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------
+   Shell + masthead
+   --------------------------------------------------------------- */
+.shell {
+	max-width: 68rem;
+	margin: 0 auto;
+	padding: 3.5rem 1.5rem 5rem;
+}
+
+.masthead {
+	padding-bottom: 1.25rem;
+	border-bottom: 1px solid var(--rule);
+}
+
+.masthead__title {
+	margin: 0;
+	font-family: var(--serif);
+	font-size: var(--step-3);
+	font-weight: 400;
+	letter-spacing: -0.015em;
+	line-height: 1.05;
+}
+
+.masthead__sub {
+	margin: 0.375rem 0 0;
+	font-size: var(--step--1);
+	color: var(--ink-70);
+}
+
+.layout {
+	display: grid;
+	grid-template-columns: 19.5rem minmax(0, 1fr);
+	gap: 3rem;
+	align-items: start;
+	margin-top: 2.5rem;
+}
+
+/* ---------------------------------------------------------------
+   Intake slip — a paper form, not a stack of boxes
+   --------------------------------------------------------------- */
+.intake {
+	position: sticky;
+	top: 2rem;
+}
+
+.intake__heading {
+	margin: 0 0 1.5rem;
+	font-family: var(--serif);
+	font-size: var(--step-1);
+	font-weight: 500;
+}
+
+.field {
+	margin-bottom: 1.375rem;
+}
+
+.field__label {
+	display: block;
+	font-size: var(--step--2);
+	font-weight: 500;
+	color: var(--ink-70);
+	margin-bottom: 0.25rem;
+}
+
+.field__input {
+	width: 100%;
+	padding: 0.375rem 0 0.4375rem;
+	border: 0;
+	border-bottom: 1px solid var(--rule);
+	border-radius: 0;
+	background: transparent;
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: var(--step-0);
+	transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.field__input::placeholder {
+	color: var(--ink-55);
+}
+
+.field__input:hover {
+	border-bottom-color: var(--ink-45);
+}
+
+.field__input:focus {
+	outline: none;
+	border-bottom-color: var(--green);
+	box-shadow: 0 1px 0 0 var(--green);
+}
+
+.field__input:focus-visible {
+	outline: 2px solid var(--green);
+	outline-offset: 3px;
+	box-shadow: none;
+}
+
+/* Strip the number spinners so the slip reads as one ruled column. */
+.field__input[type="number"] {
+	appearance: textfield;
+	-moz-appearance: textfield;
+}
+
+.field__input[type="number"]::-webkit-outer-spin-button,
+.field__input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+.field__input.is-invalid {
+	border-bottom-color: var(--stamp);
+	box-shadow: 0 1px 0 0 var(--stamp);
+}
+
+.field__hint {
+	margin: 0.375rem 0 0;
+	font-size: var(--step--2);
+	color: var(--ink-70);
+}
+
+.form__error {
+	margin: 0 0 1rem;
+	padding: 0.5rem 0.625rem;
+	background: var(--stamp-wash);
+	border-left: 2px solid var(--stamp);
+	color: var(--stamp);
+	font-size: var(--step--1);
+}
+
+/* ---------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------- */
+.button {
+	font-family: var(--sans);
+	font-size: var(--step--1);
+	font-weight: 500;
+	line-height: 1;
+	padding: 0.6875rem 1rem;
+	border-radius: 2px;
+	cursor: pointer;
+	transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.button:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+
+.button--stamp {
+	width: 100%;
+	border: 1px solid var(--stamp);
+	background: var(--stamp);
+	color: var(--card);
+}
+
+.button--stamp:hover {
+	background: #71182f;
+	border-color: #71182f;
+}
+
+.button--quiet {
+	border: 1px solid var(--rule);
+	background: transparent;
+	color: var(--ink-70);
+	white-space: nowrap;
+}
+
+.button--quiet:hover {
+	border-color: var(--green);
+	color: var(--green);
+}
+
+/* ---------------------------------------------------------------
+   Roster
+   --------------------------------------------------------------- */
+.roster__bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid var(--rule);
+}
+
+.roster__heading {
+	margin: 0;
+	font-size: var(--step--1);
+	font-weight: 500;
+	color: var(--ink-70);
+}
+
+.roster__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+	gap: 2.25rem 1.25rem;
+	margin-top: 2.25rem;
+}
+
+/* ---------------------------------------------------------------
+   Student card — a filing card with a stamped monogram
+   --------------------------------------------------------------- */
+.student-card {
+	position: relative;
+	padding: 1.75rem 1.25rem 1.25rem;
+	background: var(--card);
+	border: 1px solid var(--rule);
+	border-radius: 2px;
+	display: flex;
+	flex-direction: column;
+	transition: border-color 120ms ease;
+}
+
+.student-card:hover {
+	border-color: var(--green);
+}
+
+.student-card__monogram {
+	position: absolute;
+	top: -1.0625rem;
+	left: 1.25rem;
+	width: 2.125rem;
+	height: 2.125rem;
+	display: grid;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--green);
+	color: var(--card);
+	font-family: var(--serif);
+	font-size: var(--step--1);
+	letter-spacing: 0.01em;
+}
+
+.student-card__name {
+	margin: 0;
+	font-family: var(--serif);
+	font-size: var(--step-2);
+	font-weight: 400;
+	line-height: 1.15;
+	letter-spacing: -0.01em;
+	overflow-wrap: anywhere;
+}
+
+.student-card__age {
+	margin: 0.25rem 0 0;
+	font-size: var(--step--1);
+	color: var(--ink-70);
+}
+
+.student-card__contact {
+	margin: 1rem 0 1.125rem;
+	display: grid;
+	gap: 0.1875rem;
+	font-size: var(--step--1);
+}
+
+.student-card__contact a {
+	color: var(--ink-70);
+	text-decoration: none;
+	border-bottom: 1px solid var(--rule);
+	overflow-wrap: anywhere;
+}
+
+.student-card__contact a:hover {
+	color: var(--green);
+	border-bottom-color: var(--green);
+}
+
+.student-card__classes {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.375rem;
+	margin-top: auto;
+	padding-top: 0.875rem;
+	border-top: 1px solid var(--rule);
+}
+
+.student-card__classes:empty {
+	display: none;
+}
+
+.class-badge {
+	padding: 0.1875rem 0.5rem;
+	border-radius: 999px;
+	background: var(--green-wash);
+	color: var(--green);
+	font-size: var(--step--2);
+	font-weight: 600;
+	letter-spacing: 0.02em;
+}
+
+/* One orchestrated moment: a card stamps in when it is added. */
+.student-card--new {
+	animation: stamp-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@keyframes stamp-in {
+	from {
+		opacity: 0;
+		transform: scale(0.975);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+/* ---------------------------------------------------------------
+   Empty state
+   --------------------------------------------------------------- */
+.empty {
+	grid-column: 1 / -1;
+	padding: 1.25rem 0 2.5rem;
+}
+
+.empty__title {
+	margin: 0;
+	font-family: var(--serif);
+	font-size: var(--step-1);
+	font-weight: 400;
+}
+
+.empty__body {
+	margin: 0.375rem 0 0;
+	max-width: 34ch;
+	font-size: var(--step--1);
+	color: var(--ink-70);
+}
+
+/* ---------------------------------------------------------------
+   Narrow screens
+   --------------------------------------------------------------- */
+@media (max-width: 52rem) {
+	.shell {
+		padding: 2.5rem 1.25rem 4rem;
+	}
+
+	.layout {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 2.5rem;
+		margin-top: 2rem;
+	}
+
+	.intake {
+		position: static;
+		padding-bottom: 2.5rem;
+		border-bottom: 1px solid var(--rule);
+	}
+
+	.masthead__title {
+		font-size: 2rem;
+	}
+}
+
+@media (max-width: 30rem) {
+	.roster__bar {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
+}

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Roster — Student Manager</title>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<div class="shell">
+			<header class="masthead">
+				<h1 class="masthead__title">Roster</h1>
+				<p class="masthead__sub">Students saved in this browser</p>
+			</header>
+
+			<div class="layout">
+				<!-- Intake slip -->
+				<section class="intake" aria-labelledby="intake-heading">
+					<h2 class="intake__heading" id="intake-heading">Add a student</h2>
+
+					<form class="form" id="student-form" novalidate>
+						<div class="field">
+							<label class="field__label" for="name">Full name</label>
+							<input class="field__input" type="text" id="name" name="name" placeholder="Jane Doe" autocomplete="name" />
+						</div>
+
+						<div class="field">
+							<label class="field__label" for="age">Age</label>
+							<input class="field__input" type="number" id="age" name="age" placeholder="21" min="1" max="120" />
+						</div>
+
+						<div class="field">
+							<label class="field__label" for="phone">Phone</label>
+							<input class="field__input" type="tel" id="phone" name="phone" placeholder="555-0199" autocomplete="tel" />
+						</div>
+
+						<div class="field">
+							<label class="field__label" for="email">Email</label>
+							<input class="field__input" type="email" id="email" name="email" placeholder="jane@example.com" autocomplete="email" />
+						</div>
+
+						<div class="field">
+							<label class="field__label" for="classes">Classes</label>
+							<input class="field__input" type="text" id="classes" name="classes" placeholder="N215, N220, N423" />
+							<p class="field__hint">Separate each course code with a comma.</p>
+						</div>
+
+						<p class="form__error" id="form-error" role="alert" hidden></p>
+
+						<button class="button button--stamp" type="submit" id="add-student">Add student</button>
+					</form>
+				</section>
+
+				<!-- Roster -->
+				<section class="roster" aria-labelledby="roster-heading">
+					<div class="roster__bar">
+						<h2 class="roster__heading" id="roster-heading">
+							<span id="student-count">No students loaded</span>
+						</h2>
+						<button class="button button--quiet" type="button" id="show-students">Load saved students</button>
+					</div>
+
+					<div class="roster__grid" id="student-list" aria-live="polite"></div>
+				</section>
+			</div>
+		</div>
+
+		<script type="module" src="/src/main.js"></script>
+	</body>
+</html>

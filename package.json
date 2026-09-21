@@ -1,0 +1,15 @@
+{
+  "name": "student-mvc-vite",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Student roster manager built with Vite and an explicit MVC architecture over localStorage.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^7.3.6"
+  }
+}
