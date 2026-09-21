@@ -19,7 +19,7 @@
 			</header>
 
 			<div class="layout">
-				<!-- Intake slip -->
+				<!-- Intake slip: adds a student, and doubles as the edit form -->
 				<section class="intake" aria-labelledby="intake-heading">
 					<h2 class="intake__heading" id="intake-heading">Add a student</h2>
 
@@ -31,12 +31,29 @@
 
 						<div class="field">
 							<label class="field__label" for="age">Age</label>
-							<input class="field__input" type="number" id="age" name="age" placeholder="21" min="1" max="120" />
+							<input
+								class="field__input"
+								type="number"
+								id="age"
+								name="age"
+								placeholder="21"
+								min="1"
+								max="120"
+								inputmode="numeric"
+							/>
 						</div>
 
 						<div class="field">
 							<label class="field__label" for="phone">Phone</label>
-							<input class="field__input" type="tel" id="phone" name="phone" placeholder="555-0199" autocomplete="tel" />
+							<input
+								class="field__input"
+								type="tel"
+								id="phone"
+								name="phone"
+								placeholder="555-0199"
+								autocomplete="tel"
+								inputmode="tel"
+							/>
 						</div>
 
 						<div class="field">
@@ -52,7 +69,10 @@
 
 						<p class="form__error" id="form-error" role="alert" hidden></p>
 
-						<button class="button button--stamp" type="submit" id="add-student">Add student</button>
+						<div class="form__actions">
+							<button class="button button--stamp" type="submit" id="save-student">Add student</button>
+							<button class="text-button" type="button" id="cancel-edit" hidden>Cancel editing</button>
+						</div>
 					</form>
 				</section>
 
@@ -60,14 +80,34 @@
 				<section class="roster" aria-labelledby="roster-heading">
 					<div class="roster__bar">
 						<h2 class="roster__heading" id="roster-heading">
-							<span id="student-count">No students loaded</span>
+							<span id="student-count">Roster not loaded</span>
 						</h2>
+
+						<div class="roster__tools" id="roster-tools" hidden>
+							<label class="visually-hidden" for="search">Search the roster</label>
+							<input class="tool-input" type="search" id="search" placeholder="Search name, email, or class" />
+
+							<label class="visually-hidden" for="sort">Sort by</label>
+							<select class="tool-select" id="sort">
+								<option value="added">Order added</option>
+								<option value="name">Name A–Z</option>
+								<option value="age">Age, youngest first</option>
+								<option value="classes">Most classes</option>
+							</select>
+						</div>
+
 						<button class="button button--quiet" type="button" id="show-students">Load saved students</button>
 					</div>
 
 					<div class="roster__grid" id="student-list" aria-live="polite"></div>
 				</section>
 			</div>
+		</div>
+
+		<!-- Status line: confirms what just happened, and offers the undo -->
+		<div class="toast" id="toast" role="status" hidden>
+			<span id="toast-message"></span>
+			<button class="text-button" type="button" id="toast-undo" hidden>Undo</button>
 		</div>
 
 		<script type="module" src="/src/main.js"></script>
